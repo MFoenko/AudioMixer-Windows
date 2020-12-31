@@ -15,13 +15,17 @@ namespace AudioMixer
     public partial class Form1 : Form
     {
 
-
+        public Panel[] panels;
         public delegate void DataDelegate(int control, float val);
         public DataDelegate myDelegate;
 
         public Form1()
         {
             InitializeComponent();
+            panels = new Panel[2];
+            panels[0] = CreateControl(0);
+            panels[1] = CreateControl(1);
+
             // dump all audio devices
             foreach (AudioDevice device in AudioUtilities.GetAllDevices())
             {
@@ -36,7 +40,11 @@ namespace AudioMixer
                 {
                     // only the one associated with a defined process
                     Console.WriteLine("process "+session.Process.ProcessName);
-                    comboBox1.Items.Add(session);
+                    foreach(Panel panel in panels)
+                    {
+                        ComboBox comboBox = panel.Controls.Find("comboBox", true).FirstOrDefault() as ComboBox;
+                        comboBox.Items.Add(session);
+                    }
                 }
             }
 
@@ -59,8 +67,11 @@ namespace AudioMixer
 
         private void OnData(int control, float val)
         {
-            trackBar1.Value = (int)(val * trackBar1.Maximum);
-            AudioSession session = (AudioSession)comboBox1.SelectedItem;
+            if (control < 0 || control >= panels.Length) return;
+            TrackBar trackBar = panels[control].Controls.Find("trackBar", true).FirstOrDefault() as TrackBar;
+            ComboBox comboBox = panels[control].Controls.Find("comboBox", true).FirstOrDefault() as ComboBox;
+            trackBar.Value = (int)(val * trackBar.Maximum);
+            AudioSession session = (AudioSession)comboBox.SelectedItem;
             if(session != null) session.SetVolume(val);
         }
 
@@ -73,7 +84,7 @@ namespace AudioMixer
             int val = sp.ReadByte();
             Console.WriteLine("control=" + control + " val=" + val);
             float v = val / 256f;
-            trackBar1.Invoke(myDelegate, new object[] { control, v });
+            panels[control].Invoke(myDelegate, new object[] { control, v });
 
         }
 
@@ -100,90 +111,42 @@ namespace AudioMixer
                     }
                 }*/
 
-        private void InitializeComponent()
+        private Panel CreateControl(int i)
         {
-            this.components = new System.ComponentModel.Container();
-            this.trackBar1 = new System.Windows.Forms.TrackBar();
-            this.serialPort1 = new System.IO.Ports.SerialPort(this.components);
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.panel1 = new System.Windows.Forms.Panel();
-            this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).BeginInit();
-            this.panel1.SuspendLayout();
-            this.tableLayoutPanel1.SuspendLayout();
-            this.SuspendLayout();
-            // 
-            // trackBar1
-            // 
-            this.trackBar1.Enabled = false;
-            this.trackBar1.Location = new System.Drawing.Point(23, 27);
-            this.trackBar1.Maximum = 100;
-            this.trackBar1.Name = "trackBar1";
-            this.trackBar1.Orientation = System.Windows.Forms.Orientation.Vertical;
-            this.trackBar1.Size = new System.Drawing.Size(45, 104);
-            this.trackBar1.TabIndex = 0;
-            this.trackBar1.TickStyle = System.Windows.Forms.TickStyle.Both;
-            // 
-            // serialPort1
-            // 
-            this.serialPort1.BaudRate = 115200;
-            this.serialPort1.PortName = "COM3";
-            // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(0, 0);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(88, 21);
-            this.comboBox1.TabIndex = 2;
-            this.comboBox1.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
-            // 
-            // panel1
-            // 
-            this.panel1.AutoSize = true;
-            this.panel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.panel1.Controls.Add(this.comboBox1);
-            this.panel1.Controls.Add(this.trackBar1);
-            this.panel1.Location = new System.Drawing.Point(3, 3);
-            this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(91, 134);
-            this.panel1.TabIndex = 4;
-            // 
-            // tableLayoutPanel1
-            // 
-            this.tableLayoutPanel1.AutoSize = true;
-            this.tableLayoutPanel1.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.tableLayoutPanel1.ColumnCount = 1;
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 128F));
-            this.tableLayoutPanel1.Controls.Add(this.panel1, 0, 0);
-            this.tableLayoutPanel1.GrowStyle = System.Windows.Forms.TableLayoutPanelGrowStyle.AddColumns;
-            this.tableLayoutPanel1.Location = new System.Drawing.Point(12, 12);
-            this.tableLayoutPanel1.Name = "tableLayoutPanel1";
-            this.tableLayoutPanel1.RowCount = 1;
-            this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tableLayoutPanel1.Size = new System.Drawing.Size(97, 140);
-            this.tableLayoutPanel1.TabIndex = 5;
-            // 
-            // Form1
-            // 
-            this.AutoSize = true;
-            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
-            this.ClientSize = new System.Drawing.Size(622, 542);
-            this.Controls.Add(this.tableLayoutPanel1);
-            this.Name = "Form1";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
-            this.Load += new System.EventHandler(this.Form1_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.trackBar1)).EndInit();
-            this.panel1.ResumeLayout(false);
-            this.panel1.PerformLayout();
-            this.tableLayoutPanel1.ResumeLayout(false);
-            this.tableLayoutPanel1.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            
 
+            ComboBox comboBox = new System.Windows.Forms.ComboBox();
+            comboBox.FormattingEnabled = true;
+            comboBox.Location = new System.Drawing.Point(0, 0);
+            comboBox.Name = "comboBox";
+            comboBox.Size = new System.Drawing.Size(100, 20);
+            comboBox.TabIndex = 2;
+            comboBox.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
+
+            TrackBar trackBar = new System.Windows.Forms.TrackBar();
+            trackBar.Enabled = false;
+            trackBar.Location = new System.Drawing.Point(25, 20);
+            trackBar.Maximum = 100;
+            trackBar.Name = "trackBar";
+            trackBar.Orientation = System.Windows.Forms.Orientation.Vertical;
+            trackBar.Size = new System.Drawing.Size(50, 100);
+            trackBar.TabIndex = 0;
+            trackBar.TickStyle = System.Windows.Forms.TickStyle.Both;
+
+            Panel panel = new System.Windows.Forms.Panel();
+            panel.AutoSize = true;
+            panel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            panel.Controls.Add(comboBox);
+            panel.Controls.Add(trackBar);
+            panel.Location = new System.Drawing.Point(3, 3);
+            panel.Name = "panel" + i;
+            //panel.TabIndex = 4;
+
+            this.tableLayoutPanel1.Controls.Add(panel);
+            return panel;
         }
+
+      
 
         private void groupBox1_Enter(object sender, EventArgs e)
         {
