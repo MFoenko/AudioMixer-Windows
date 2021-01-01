@@ -15,16 +15,13 @@ namespace AudioMixer
     public partial class Form1 : Form
     {
 
-        public Panel[] panels;
+        public Panel[] panels = new Panel[0];
         public delegate void DataDelegate(int control, float val);
         public DataDelegate myDelegate;
 
         public Form1()
         {
             InitializeComponent();
-            panels = new Panel[2];
-            panels[0] = CreateControl(0);
-            panels[1] = CreateControl(1);
 
             // dump all audio devices
             foreach (AudioDevice device in AudioUtilities.GetAllDevices())
@@ -32,22 +29,6 @@ namespace AudioMixer
                 Console.WriteLine("dev "+device.FriendlyName);
                 
             }
-
-            // dump all audio sessions
-            foreach (AudioSession session in AudioUtilities.GetAllSessions())
-            {
-                if (session.Process != null)
-                {
-                    // only the one associated with a defined process
-                    Console.WriteLine("process "+session.Process.ProcessName);
-                    foreach(Panel panel in panels)
-                    {
-                        ComboBox comboBox = panel.Controls.Find("comboBox", true).FirstOrDefault() as ComboBox;
-                        comboBox.Items.Add(session);
-                    }
-                }
-            }
-
 
 
             //AudioUtilities.IAudioSessionManager2 manager = AudioUtilities.GetAudioSessionManager();
@@ -62,7 +43,46 @@ namespace AudioMixer
             serialPort1.DataReceived += new SerialDataReceivedEventHandler(mySerialPort_DataReceived);
             serialPort1.Open();
 
+            byte[] req = new byte[1];
+            req[0] = (byte)'C';
+            serialPort1.Write(req, 0, 1);
+
+            int controlCount = serialPort1.ReadByte();
+            Console.WriteLine("swag=" + controlCount);
+            panels = new Panel[controlCount];
+            for(int i=0;i<controlCount; i++)
+            {
+                panels[i] = CreateControl(i);
+            }
+            LoadProcesses();
+
+
             myDelegate = new DataDelegate(OnData);
+        }
+
+        private void LoadProcesses()
+        {
+
+            foreach (Panel panel in panels)
+            {
+                ComboBox comboBox = panel.Controls.Find("comboBox", true).FirstOrDefault() as ComboBox;
+                comboBox.Items.Clear();
+            }
+
+            // dump all audio sessions
+            foreach (AudioSession session in AudioUtilities.GetAllSessions())
+            {
+                if (session.Process != null)
+                {
+                    // only the one associated with a defined process
+                    Console.WriteLine("process " + session.Process.ProcessName);
+                    foreach (Panel panel in panels)
+                    {
+                        ComboBox comboBox = panel.Controls.Find("comboBox", true).FirstOrDefault() as ComboBox;
+                        comboBox.Items.Add(session);
+                    }
+                }
+            }
         }
 
         private void OnData(int control, float val)
@@ -95,11 +115,26 @@ namespace AudioMixer
 
         }
 
-        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        private void comboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            AudioSession session = (AudioSession)comboBox1.SelectedItem;
+            ComboBox comboBox = sender as ComboBox;
+            int index = (int)comboBox.Tag;
+            //TrackBar trackBar = panels[index].Controls.Find("trackBar", true).FirstOrDefault();
+
+            AudioSession session = (AudioSession)comboBox.SelectedItem;
             if (session == null) return;
-            trackBar1.Value = (int)(session.GetVolume() * trackBar1.Maximum);
+
+            byte[] req = new byte[2];
+            req[0] = (byte)'G';
+            req[1] = (byte)index;
+            serialPort1.Write(req, 0, 2);
+            
+            float val = serialPort1.ReadByte()/256f;
+            Console.WriteLine("response=" + val);
+            comboBox.Invoke(myDelegate, new object[] { index, val });
+
+            //trackBar.Value = (int)(session.GetVolume() * trackBar.Maximum);
+
         }
 
         /*
@@ -121,7 +156,8 @@ namespace AudioMixer
             comboBox.Name = "comboBox";
             comboBox.Size = new System.Drawing.Size(100, 20);
             comboBox.TabIndex = 2;
-            comboBox.SelectedIndexChanged += new System.EventHandler(this.comboBox1_SelectedIndexChanged);
+            comboBox.Tag = i;
+            comboBox.SelectedIndexChanged += new System.EventHandler(this.comboBox_SelectedIndexChanged);
 
             TrackBar trackBar = new System.Windows.Forms.TrackBar();
             trackBar.Enabled = false;
@@ -146,11 +182,10 @@ namespace AudioMixer
             return panel;
         }
 
-      
 
-        private void groupBox1_Enter(object sender, EventArgs e)
+        private void Form1_Activated(object sender, EventArgs e)
         {
-
+            LoadProcesses();
         }
     }
 
